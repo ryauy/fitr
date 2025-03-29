@@ -17,7 +17,7 @@ struct AppColors {
 
 
 struct APIKeys {
-    static let openWeatherMapKey = "YOUR_OPENWEATHERMAP_API_KEY"
+    static let openWeatherMapKey = "e984bd926176bfd323f47d12416d1a41"
 }
 
 struct APIEndpoints {
