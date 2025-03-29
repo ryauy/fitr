@@ -41,6 +41,7 @@ struct fitrApp: App {
         if authManager.isAuthenticated {
             DashboardView()
                 .environmentObject(authManager)
+                
         } else {
             LoginView()
                 .environmentObject(authManager)
