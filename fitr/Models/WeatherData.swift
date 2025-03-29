@@ -5,16 +5,15 @@
 //  Created by Ryan Nguyen on 3/29/25.
 //
 
+
 import Foundation
 
-public struct WeatherData: Codable {
+struct WeatherData: Codable {
     let coord: Coordinates
     let weather: [Weather]
     let main: Main
-    let name: String
     let wind: Wind
-    let sys: Sys
-    let dt: TimeInterval
+    let name: String
     
     struct Coordinates: Codable {
         let lon: Double
@@ -45,11 +44,5 @@ public struct WeatherData: Codable {
         let deg: Int
         
         var speedMPH: Int { Int(speed) }
-    }
-    
-    struct Sys: Codable {
-        let country: String?
-        let sunrise: TimeInterval?
-        let sunset: TimeInterval?
     }
 }

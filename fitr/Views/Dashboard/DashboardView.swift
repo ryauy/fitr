@@ -12,7 +12,7 @@ struct DashboardView: View {
 @EnvironmentObject var authManager: AuthenticationManager
 @StateObject private var locationManager = LocationManager()
 
-@State private var weather: Weather?
+@State private var weather: WeatherData?
 @State private var outfit: Outfit?
 @State private var clothingItems: [ClothingItem] = []
 @State private var isLoading = true
@@ -297,7 +297,7 @@ private func loadWeatherData() {
     }
 }
 
-private func getOutfitRecommendation(weather: Weather) {
+private func getOutfitRecommendation(weather: WeatherData) {
     print("in get outfit rec", authManager.currentUser)
     guard let userId = authManager.currentUser?.id else {
         errorMessage = "User not authenticated"

@@ -11,8 +11,7 @@ struct Outfit: Identifiable, Codable {
     var id: String
     var userId: String
     var items: [ClothingItem]
-    var weather: Weather
-    var createdAt: Date
+    var weather: WeatherData
     var description: String
     
     enum CodingKeys: String, CodingKey {
@@ -20,7 +19,6 @@ struct Outfit: Identifiable, Codable {
         case userId = "user_id"
         case items
         case weather
-        case createdAt = "created_at"
         case description
     }
 }
