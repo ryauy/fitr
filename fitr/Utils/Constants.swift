@@ -20,13 +20,6 @@ struct APIKeys {
     static let openWeatherMapKey = "e984bd926176bfd323f47d12416d1a41"
 }
 
-struct APIEndpoints {
-    static let baseURL = "YOUR_BACKEND_BASE_URL"
-    static let weatherEndpoint = "/weather"
-    static let outfitRecommendationEndpoint = "/outfit-recommendation"
-    static let clothingClassificationEndpoint = "/classify-clothing"
-}
-
 struct FirebaseCollections {
     static let users = "users"
     static let clothingItems = "clothingItems"
