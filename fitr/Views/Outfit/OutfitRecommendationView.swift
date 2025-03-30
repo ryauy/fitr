@@ -1,15 +1,9 @@
-//
-//  OutfitRecommendationView.swift
-//  fitr
-//
-//  Created by Ryan Nguyen on 3/29/25.
-//
-
 import SwiftUI
 import Kingfisher
 
 struct OutfitRecommendationView: View {
     let outfit: Outfit
+    @EnvironmentObject var authManager: AuthenticationManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
@@ -48,6 +42,18 @@ struct OutfitRecommendationView: View {
                                 Text(item.type.rawValue)
                                     .font(.caption)
                                     .foregroundColor(AppColors.davyGrey.opacity(0.7))
+                                
+                                // Added Dirty Button
+                                Button(action: { markAsDirty(item) }) {
+                                    Text("Mark Dirty")
+                                        .font(.caption2)
+                                        .padding(4)
+                                        .frame(maxWidth: .infinity)
+                                        .background(Color.red.opacity(0.2))
+                                        .foregroundColor(.red)
+                                        .cornerRadius(4)
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
                             .frame(width: 120)
                         }
@@ -59,5 +65,9 @@ struct OutfitRecommendationView: View {
         .padding()
         .background(AppColors.lightPink.opacity(0.15))
         .cornerRadius(15)
+    }
+    
+    private func markAsDirty(_ item: ClothingItem) {
+        FirebaseService.shared.markItemAsDirty(item: item) { _ in }
     }
 }

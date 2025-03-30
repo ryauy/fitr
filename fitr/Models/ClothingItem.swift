@@ -26,6 +26,7 @@ struct ClothingItem: Identifiable, Codable, Equatable {
     var createdAt: Date
     var weatherTags: [WeatherTag]
     let styleTags: [StyleTag]
+    var dirty: Bool = false
 
     
     enum CodingKeys: String, CodingKey {
@@ -55,3 +56,5 @@ enum WeatherTag: String, Codable, CaseIterable {
     case snowy = "Snowy"
     case windy = "Windy"
 }
+
+

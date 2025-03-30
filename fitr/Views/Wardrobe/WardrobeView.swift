@@ -1,72 +1,53 @@
 import SwiftUI
-import Firebase
+import Kingfisher
 
 struct WardrobeView: View {
     @EnvironmentObject var authManager: AuthenticationManager
-    
     @State private var clothingItems: [ClothingItem] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var showAddClothingSheet = false
     @State private var selectedFilter: ClothingType?
-    @State private var hasLoadedInitialData = false
-    @State private var gridColumns = [
-        GridItem(.adaptive(minimum: 120, maximum: 150), spacing: 12)
-    ]
-    
-    // Toast state
-    @State private var showToast = false
-    @State private var toastMessage = ""
-    @State private var isSuccessToast = true
     
     var body: some View {
         NavigationView {
             ZStack {
-                backgroundLayer
-                contentLayer
+                Color(.systemGroupedBackground).ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    filterBar
+                    
+                    if isLoading {
+                        loadingView
+                    } else if clothingItems.isEmpty {
+                        emptyStateView
+                    } else {
+                        clothingGrid
+                    }
+                }
             }
             .navigationTitle("My Wardrobe")
-            .toolbar { toolbarContent }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showAddClothingSheet = true }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
             .sheet(isPresented: $showAddClothingSheet) {
                 AddClothingView()
                     .environmentObject(authManager)
             }
             .onAppear {
-                if !hasLoadedInitialData || clothingItems.isEmpty {
-                    loadClothingItems()
-                    hasLoadedInitialData = true
-                }
+                loadClothingItems()
             }
-            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WardrobeUpdated"))) { notification in
-                  handleWardrobeUpdate(notification)
-              }
-            .toast(isPresented: $showToast, message: toastMessage, isSuccess: isSuccessToast)
+            .onReceive(NotificationCenter.default.publisher(for: .wardrobeUpdated)) { _ in
+                loadClothingItems()
+            }
         }
     }
     
-    // MARK: - View Components
-    
-    private var backgroundLayer: some View {
-        AppColors.peachSnaps.opacity(0.2).ignoresSafeArea()
-    }
-    
-    private var contentLayer: some View {
-        VStack(spacing: 0) {
-            filterOptionsSection
-            
-            if isLoading {
-                loadingView
-            } else if clothingItems.isEmpty {
-                emptyStateView
-            } else {
-                clothingGridView
-            }
-            
-            errorView
-        }
-    }
-    
-    private var filterOptionsSection: some View {
+    private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 FilterButton(
@@ -86,141 +67,48 @@ struct WardrobeView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
         }
-        .background(Color.white.opacity(0.5))
     }
     
     private var loadingView: some View {
-        VStack {
-            Spacer()
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: AppColors.davyGrey))
-            Spacer()
-        }
+        ProgressView()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     private var emptyStateView: some View {
-        VStack {
-            Spacer()
-            VStack(spacing: 20) {
-                Image(systemName: "tshirt")
-                    .font(.system(size: 60))
-                    .foregroundColor(AppColors.davyGrey.opacity(0.6))
-                
-                Text("Your wardrobe is empty")
-                    .font(.headline)
-                    .foregroundColor(AppColors.davyGrey)
-                
-                Text("Add some clothing items to get started")
-                    .font(.subheadline)
-                    .foregroundColor(AppColors.davyGrey.opacity(0.8))
-                    .multilineTextAlignment(.center)
-                
-                Button(action: {
-                    showAddClothingSheet = true
-                }) {
-                    Text("Add Clothing")
-                        .padding(.horizontal, 30)
+        VStack(spacing: 20) {
+            Image(systemName: "tshirt")
+                .font(.system(size: 60))
+                .foregroundColor(.gray.opacity(0.4))
+            
+            Text("Your wardrobe is empty")
+                .font(.headline)
+            
+            Button(action: { showAddClothingSheet = true }) {
+                Text("Add Clothing")
+                    .padding(.horizontal, 24)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var clothingGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                ForEach(filteredItems) { item in
+                    ClothingItemCard(item: item) {
+                        markAsDirty(item)
+                    }
                 }
-                .primaryButtonStyle()
             }
             .padding()
-            Spacer()
         }
     }
     
-    private var clothingGridView: some View {
-        ScrollView {
-            LazyVGrid(columns: gridColumns, spacing: 12) {
-                ForEach(filteredClothingItems) { item in
-                    ClothingItemView(item: item, onDelete: {
-                        deleteClothingItem(item)
-                    })
-                    .frame(height: 180)
-                }
-            }
-            .padding(12)
-        }
-    }
-    
-    private var errorView: some View {
-        Group {
-            if let errorMessage = errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .padding()
-            }
-        }
-    }
-    
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Button(action: {
-                showAddClothingSheet = true
-            }) {
-                Image(systemName: "plus")
-            }
-        }
-        
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Button(action: toggleGridLayout) {
-                // Check the current grid size to determine which icon to show
-                   if case let .adaptive(min, _) = gridColumns.first?.size, min == 120 {
-                       Image(systemName: "square.grid.3x3")
-                   } else {
-                       Image(systemName: "square.grid.2x2")
-                   }            }
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    var filteredClothingItems: [ClothingItem] {
-        if let filter = selectedFilter {
-            return clothingItems.filter { $0.type == filter }
-        } else {
-            return clothingItems
-        }
-    }
-    
-    private func toggleGridLayout() {
-        // Check if we're currently using the larger grid
-        if case let .adaptive(min, max) = gridColumns.first?.size, min == 120 {
-            // Switch to compact grid
-            gridColumns = [GridItem(.adaptive(minimum: 90, maximum: 110), spacing: 10)]
-        } else {
-            // Switch to standard grid
-            gridColumns = [GridItem(.adaptive(minimum: 120, maximum: 150), spacing: 12)]
-        }
-    }
-    
-    private func handleWardrobeUpdate(_ notification: Notification) {
-        // Get the operation type from the notification
-        let operationType = notification.userInfo?["operation"] as? String ?? "update"
-        
-        // Set appropriate toast message based on operation
-        switch operationType {
-        case "add":
-            self.toastMessage = "Item added to wardrobe!"
-        case "delete":
-            self.toastMessage = "Item deleted successfully"
-        default:
-            self.toastMessage = "Wardrobe updated!"
-        }
-        
-        self.isSuccessToast = true
-        self.showToast = true
-        
-        // Hide toast after 2 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation {
-                self.showToast = false
-            }
-        }
-        
-        // Refresh the wardrobe items
-        loadClothingItems()
+    private var filteredItems: [ClothingItem] {
+        let baseItems = clothingItems.filter { !$0.dirty }
+        guard let filter = selectedFilter else { return baseItems }
+        return baseItems.filter { $0.type == filter }
     }
     
     private func loadClothingItems() {
@@ -231,67 +119,61 @@ struct WardrobeView: View {
         }
         
         isLoading = true
-        
         FirebaseService.shared.getClothingItems(for: userId) { result in
             DispatchQueue.main.async {
-                self.isLoading = false
-                
+                isLoading = false
                 switch result {
                 case .success(let items):
-                    self.clothingItems = items
+                    // Filter out any items that might still be marked as dirty
+                    clothingItems = items.filter { !$0.dirty }
                 case .failure(let error):
-                    self.errorMessage = "Failed to load clothing items: \(error.localizedDescription)"
+                    errorMessage = error.localizedDescription
                 }
             }
         }
     }
     
-    private func deleteClothingItem(_ item: ClothingItem) {
-        guard let userId = authManager.currentUser?.id else { return }
-        
-        FirebaseService.shared.deleteClothingItem(itemId: item.id, userId: userId, imageURL: item.imageURL) { result in
+    private func markAsDirty(_ item: ClothingItem) {
+        FirebaseService.shared.markItemAsDirty(item: item) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    // Update local array directly instead of reloading from Firebase
-                    if let index = self.clothingItems.firstIndex(where: { $0.id == item.id }) {
-                        self.clothingItems.remove(at: index)
+                    if let index = clothingItems.firstIndex(where: { $0.id == item.id }) {
+                        clothingItems[index].dirty = true
                     }
-                    
-                    // Show success toast
-                    self.toastMessage = "Item deleted successfully"
-                    self.isSuccessToast = false
-                    self.showToast = true
-                    
-                    // Hide toast after 2 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        withAnimation {
-                            self.showToast = false
-                        }
-                    }
-                    
-                    // Notify dashboard to update if needed
-                    NotificationCenter.default.post(
-                                       name: Notification.Name("WardrobeUpdated"),
-                                       object: nil,
-                                       userInfo: ["operation": "delete"]
-                                   )
+                    NotificationCenter.default.post(name: .wardrobeUpdated, object: nil)
                 case .failure(let error):
-                    // Show error toast
-                    self.toastMessage = "Failed to delete item"
-                    self.isSuccessToast = false
-                    self.showToast = true
-                    
-                    // Hide toast after 3 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        withAnimation {
-                            self.showToast = false
-                        }
-                    }
-                    
-                    self.errorMessage = "Failed to delete item: \(error.localizedDescription)"
+                    errorMessage = error.localizedDescription
                 }
             }
+        }
+    }
+}
+
+struct ClothingItemCard: View {
+    let item: ClothingItem
+    let onMarkDirty: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            KFImage(URL(string: item.imageURL))
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(height: 150)
+                .cornerRadius(10)
+            
+            VStack(alignment: .leading) {
+                Text(item.name)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                
+                Text(item.type.rawValue)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
         }
     }
 }
@@ -305,13 +187,15 @@ struct FilterButton: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)
-                .background(isSelected ? AppColors.springRain : AppColors.moonMist.opacity(0.5))
-                .foregroundColor(isSelected ? .white : AppColors.davyGrey)
-                .cornerRadius(16)
+                .background(isSelected ? Color.blue : Color.gray.opacity(0.2))
+                .foregroundColor(isSelected ? .white : .primary)
+                .cornerRadius(15)
         }
     }
 }
 
+extension Notification.Name {
+    static let wardrobeUpdated = Notification.Name("WardrobeUpdated")
+}

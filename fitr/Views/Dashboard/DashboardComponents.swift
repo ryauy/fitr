@@ -75,14 +75,21 @@ struct MainTabView: View {
                     Label("Wardrobe", systemImage: "tshirt.fill")
                 }
                 .tag(1)
-            
+            //Laundry Tab
+            LaundryView()
+                .tabItem {
+                    Image(systemName: "basket.fill")
+                    Text("Laundry")
+                }
+                .tag(2)
             // Profile Tab
             ProfileView()
                 .environmentObject(authManager)
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }
-                .tag(2)
+                .tag(3)
+            
         }
         .accentColor(AppColors.davyGrey)
     }
