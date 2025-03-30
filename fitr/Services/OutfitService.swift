@@ -71,11 +71,35 @@ class OutfitService {
                     // Parse the AI response
                     let decoder = JSONDecoder()
                     let aiResponse = try decoder.decode(OutfitAIResponse.self, from: jsonData)
+                    var selectedItemIds = Set(aiResponse.selectedItemIds)
                     
-                    // Get the selected items based on the AI's recommendation
-                    let selectedItemIds = Set(aiResponse.selectedItemIds)
+                    // Ensure only one item per category is included
+                    var selectedTypes: [ClothingType: ClothingItem] = [:]
+                    for item in clothingItems where selectedItemIds.contains(item.id) {
+                        if selectedTypes[item.type] == nil {
+                            selectedTypes[item.type] = item
+                        }
+                    }
+                    let mutuallyExclusiveTypes: [[ClothingType]] = [
+                        [.tShirt, .shirt], // One top
+                        [.pants, .shorts]  // One bottom
+                    ]
+                    for category in mutuallyExclusiveTypes {
+                        for item in clothingItems where category.contains(item.type) {
+                            if selectedTypes.keys.contains(where: { category.contains($0) }) {
+                                continue
+                            }
+                            selectedTypes[item.type] = item
+                        }
+                    }
+
+                    // Add selected items to the set
+                    selectedItemIds = Set(selectedTypes.values.map { $0.id })
+                    for (_, item) in selectedTypes {
+                        selectedItemIds.insert(item.id)
+                    }
                     let selectedItems = clothingItems.filter { selectedItemIds.contains($0.id) }
-                    
+                                        
                     // Create the outfit
                     let outfit = Outfit(
                         id: UUID().uuidString,

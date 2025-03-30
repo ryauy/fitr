@@ -101,7 +101,7 @@ struct OutfitRecommendationView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "thermometer")
                                 .font(.caption)
-                            Text("\(Int(weather.temperature))°")
+                            Text("\(Int(weather.temperature))Â°")
                                 .font(.caption)
                             Image(systemName: weatherIcon(for: weather.condition))
                                 .font(.caption)
@@ -192,9 +192,8 @@ struct OutfitRecommendationView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 80, height: 80)
-                    .cornerRadius(8)
+                    .cornerRadius(6)
                 
-                // Item details
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.name)
                         .font(.headline)
@@ -208,20 +207,20 @@ struct OutfitRecommendationView: View {
                         .font(.caption)
                         .foregroundColor(AppColors.davyGrey.opacity(0.6))
                     
-                    // Tags
                     HStack {
                         ForEach(item.weatherTags.prefix(2), id: \.self) { tag in
                             Text(tag.rawValue)
                                 .font(.system(size: 10))
+                                .lineLimit(1)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(AppColors.moonMist.opacity(0.3))
                                 .cornerRadius(4)
                         }
-                        
                         ForEach(item.styleTags.prefix(1), id: \.self) { tag in
                             Text(tag.rawValue)
                                 .font(.system(size: 10))
+                                .lineLimit(1)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(AppColors.springRain.opacity(0.3))
@@ -232,7 +231,7 @@ struct OutfitRecommendationView: View {
                 
                 Spacer()
                 
-                // Mark as Dirty button
+                // Mark as Dirty Button
                 if !markedItems.contains(item.id) {
                     Button(action: { markAsDirty(item) }) {
                         VStack(spacing: 4) {
@@ -247,17 +246,22 @@ struct OutfitRecommendationView: View {
                         .background(Color.red.opacity(0.1))
                         .cornerRadius(8)
                     }
-                } else {
+                }
+                
+                // Swap Button
+                Button(action: {
+                    swap(item)
+                }) {
                     VStack(spacing: 4) {
-                        Image(systemName: "basket.fill")
+                        Image(systemName: "arrow.2.circlepath")
                             .font(.system(size: 16))
-                        Text("Laundry")
+                        Text("Swap")
                             .font(.caption2)
                     }
-                    .foregroundColor(.gray)
+                    .foregroundColor(.blue)
                     .frame(width: 50)
                     .padding(.vertical, 8)
-                    .background(Color.gray.opacity(0.1))
+                    .background(Color.blue.opacity(0.1))
                     .cornerRadius(8)
                 }
             }
@@ -355,6 +359,46 @@ struct OutfitRecommendationView: View {
                     isSuccessToast = false
                     showToast = true
                     
+                    // Hide toast after 3 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        showToast = false
+                    }
+                }
+            }
+        }
+    }
+    
+    private func swap(_ item: ClothingItem) {
+        // Start animation
+        animatingItemId = item.id
+        
+        // Call Firebase service to swap the item
+        FirebaseService.shared.swapItem(item: item) { result in
+            DispatchQueue.main.async {
+                // Stop animation
+                animatingItemId = nil
+                switch result {
+                case .success(let newItem):
+                    // Replace the old item with the new item in the outfit
+                    if var currentOutfit = self.outfit {
+                        if let index = currentOutfit.items.firstIndex(where: { $0.id == item.id }) {
+                            currentOutfit.items[index] = newItem
+                            self.outfit = currentOutfit
+                        }
+                    }
+                    // Show success toast
+                    toastMessage = "\(item.name) swapped successfully"
+                    isSuccessToast = true
+                    showToast = true
+                    // Hide toast after 2 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        showToast = false
+                    }
+                case .failure(let error):
+                    // Show error toast
+                    toastMessage = "Failed to swap item: \(error.localizedDescription)"
+                    isSuccessToast = false
+                    showToast = true
                     // Hide toast after 3 seconds
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                         showToast = false
